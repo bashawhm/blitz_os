@@ -9,6 +9,8 @@ pub mod gdt;
 pub mod memory;
 
 use core::panic::PanicInfo;
+use bootloader::{bootinfo::BootInfo, entry_point};
+use crate::memory::{create_example_mapping};
 
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
@@ -20,10 +22,9 @@ pub fn halt() -> ! {
     loop {}
 }
 
-// static mut TIME: u64 = 0;
+entry_point!(kmain);
 
-#[no_mangle]
-pub extern "C" fn _start() -> ! {
+fn kmain(boot_info: &'static BootInfo) -> ! {
     println!("Blitz Online");
 
     gdt::init();
@@ -31,12 +32,16 @@ pub extern "C" fn _start() -> ! {
     unsafe { interrupt::PICS.lock().initialize(); }
     x86_64::instructions::interrupts::enable();
 
-    use crate::memory::{create_example_mapping, EmptyFrameAllocator};
-    let LEVEL_4_TABLE_ADDR: usize = 0o_177777_777_777_777_777_0000;
-    let mut recursive_page_table = unsafe { memory::init(LEVEL_4_TABLE_ADDR) };
+    let mut recursive_page_table = unsafe { 
+        memory::init(boot_info.p4_table_addr as usize)
+    };
 
-    create_example_mapping(&mut recursive_page_table, &mut EmptyFrameAllocator);
-    unsafe { (0x1900 as *mut u64).write_volatile(0xf021f077f065f04e)};
+    let mut frame_allocator = memory::init_frame_allocator(&boot_info.memory_map);
+
+    println!("created allocator...");
+
+    create_example_mapping(&mut recursive_page_table, &mut frame_allocator);
+    unsafe { (0xdeadbeaf900 as *mut u64).write_volatile(0xf021f077f065f04e)};
 
     halt();
 }
