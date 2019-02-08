@@ -6,8 +6,7 @@ A simple OS based on https://os.phil-opp.com.
 
 Install the cargo dependancies:
 
-cargo install cargo-xbuild
-cargo install bootimage
+cargo install cargo-xbuild bootimage
 
 Install QEMU
 
