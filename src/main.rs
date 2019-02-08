@@ -31,23 +31,12 @@ pub extern "C" fn _start() -> ! {
     unsafe { interrupt::PICS.lock().initialize(); }
     x86_64::instructions::interrupts::enable();
 
-    /*use x86_64::structures::paging::PageTable;
-    let level_4_table_ptr = 0xffff_ffff_ffff_f000 as *const PageTable;
-    let level_4_table = unsafe { &*level_4_table_ptr };
-
-    for i in 0..10 {
-        println!("Entry {}: {:?}", i, level_4_table[i]);
-    }*/
-
-    use crate::memory::{translate_addr, self};
+    use crate::memory::{create_example_mapping, EmptyFrameAllocator};
     let LEVEL_4_TABLE_ADDR: usize = 0o_177777_777_777_777_777_0000;
-    let recursive_page_table = unsafe { memory::init(LEVEL_4_TABLE_ADDR) };
-    //Identity mapped vga_buffer
-    println!("0xb8000 -> {:?}", translate_addr(0xb8000, &recursive_page_table));
-    // some code page
-    println!("0x20010a -> {:?}", translate_addr(0x20010a, &recursive_page_table));
-    // some stack page
-    println!("0x57ac001ffe48 -> {:?}", translate_addr(0x57ac001ffe48, &recursive_page_table));
+    let mut recursive_page_table = unsafe { memory::init(LEVEL_4_TABLE_ADDR) };
+
+    create_example_mapping(&mut recursive_page_table, &mut EmptyFrameAllocator);
+    unsafe { (0x1900 as *mut u64).write_volatile(0xf021f077f065f04e)};
 
     halt();
 }
